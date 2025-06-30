@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام كاشير السوبر ماركت</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>نظام كاشير السوبر ماركت</h1>
+        
+        <div class="scanner-section">
+            <button id="startScanner">تشغيل الماسح الضوئي</button>
+            <div id="scanner-container" style="display:none;">
+                <div id="interactive" class="viewport"></div>
+                <button id="stopScanner">إيقاف الماسح</button>
+            </div>
+        </div>
+
+        <div class="product-form">
+            <h2>إضافة منتج جديد</h2>
+            <input type="text" id="barcode" placeholder="باركود المنتج" readonly>
+            <input type="text" id="productName" placeholder="اسم المنتج">
+            <input type="number" id="productPrice" placeholder="السعر">
+            <button id="addProduct">إضافة منتج</button>
+        </div>
+
+        <div class="invoice-section">
+            <h2>الفواتير</h2>
+            <div id="invoice-items"></div>
+            <div class="total">الإجمالي: <span id="total-amount">0.00</span></div>
+            <button id="completeSale">إتمام البيع</button>
+            <button id="printReport">طباعة تقرير</button>
+        </div>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
