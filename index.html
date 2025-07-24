@@ -1,41 +1,236 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام كاشير السوبر ماركت</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/quagga/dist/quagga.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Squid Game - Red Light Green Light</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"></script>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; background: #000; }
+    canvas { border: 2px solid #fff; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>نظام كاشير السوبر ماركت</h1>
-        
-        <div class="scanner-section">
-            <button id="startScanner">تشغيل الماسح الضوئي</button>
-            <div id="scanner-container" style="display:none;">
-                <div id="interactive" class="viewport"></div>
-                <button id="stopScanner">إيقاف الماسح</button>
-            </div>
-        </div>
+<script>
+let player;
+let bots = [];
+let gameState = 'playing';
+let lightState = 'green';
+let lightTimer = 0;
+let lightDuration = 200;
+let score = 0;
+let finishLine = 50;
+let backgroundImg;
+let gameMusic;
+let resourcesLoaded = false;
 
-        <div class="product-form">
-            <h2>إضافة منتج جديد</h2>
-            <input type="text" id="barcode" placeholder="باركود المنتج" readonly>
-            <input type="text" id="productName" placeholder="اسم المنتج">
-            <input type="number" id="productPrice" placeholder="السعر">
-            <button id="addProduct">إضافة منتج</button>
-        </div>
+function preload() {
+  // استخدام صورة افتراضية إذا فشل تحميل الصورة
+  try {
+    backgroundImg = loadImage('https://i.imgur.com/7K2V8nq.jpg', () => {
+      resourcesLoaded = true;
+    }, () => {
+      console.log('فشل تحميل الصورة، استخدام خلفية افتراضية');
+      backgroundImg = createGraphics(width, height);
+      backgroundImg.background(0, 100, 0); // خلفية خضراء بديلة
+      resourcesLoaded = true;
+    });
+  } catch (e) {
+    console.log('خطأ في تحميل الصورة: ', e);
+    backgroundImg = createGraphics(width, height);
+    backgroundImg.background(0, 100, 0);
+    resourcesLoaded = true;
+  }
 
-        <div class="invoice-section">
-            <h2>الفواتير</h2>
-            <div id="invoice-items"></div>
-            <div class="total">الإجمالي: <span id="total-amount">0.00</span></div>
-            <button id="completeSale">إتمام البيع</button>
-            <button id="printReport">طباعة تقرير</button>
-        </div>
-    </div>
+  // تحميل الموسيقى مع التعامل مع الأخطاء
+  try {
+    gameMusic = loadSound('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', () => {
+      console.log('تم تحميل الموسيقى');
+    }, () => {
+      console.log('فشل تحميل الموسيقى');
+    });
+  } catch (e) {
+    console.log('خطأ في تحميل الموسيقى: ', e);
+  }
+}
 
-    <script src="js/script.js"></script>
+function setup() {
+  createCanvas(800, 600);
+  player = new Player(width / 2, height - 50);
+  for (let i = 0; i < 5; i++) {
+    bots.push(new Bot(random(width), height - 50));
+  }
+  // تشغيل الموسيقى إذا تم تحميلها
+  if (gameMusic) {
+    gameMusic.loop();
+  }
+}
+
+function draw() {
+  // عرض خلفية افتراضية حتى يتم تحميل الصورة
+  if (!resourcesLoaded) {
+    background(0, 100, 0);
+  } else {
+    background(backgroundImg);
+  }
+
+  // عرض خط النهاية
+  fill(255, 255, 0);
+  rect(0, finishLine, width, 10);
+
+  // عرض الإشارة
+  if (lightState === 'green') {
+    fill(0, 255, 0);
+    textSize(32);
+    textAlign(CENTER);
+    text('إشارة خضراء', width / 2, 30);
+  } else {
+    fill(255, 0, 0);
+    textSize(32);
+    textAlign(CENTER);
+    text('إشارة حمراء', width / 2, 30);
+  }
+
+  // عرض النقاط
+  fill(255);
+  textSize(24);
+  textAlign(LEFT);
+  text('النقاط: ' + score, 10, 30);
+
+  // تحديث حالة الإشارة
+  lightTimer++;
+  if (lightTimer > lightDuration) {
+    lightState = lightState === 'green' ? 'red' : 'green';
+    lightTimer = 0;
+    lightDuration = random(100, 300);
+  }
+
+  // تحديث وعرض اللاعب
+  player.update();
+  player.show();
+
+  // تحديث وعرض البوتات
+  for (let bot of bots) {
+    bot.update();
+    bot.show();
+  }
+
+  // تحديث النقاط
+  if (player.isMoving && lightState === 'green') {
+    score += 1;
+  }
+
+  // التحقق من الفوز
+  if (player.y <= finishLine) {
+    gameState = 'win';
+  }
+
+  // التحقق من الخسارة
+  if (lightState === 'red' && player.isMoving) {
+    gameState = 'gameOver';
+  }
+
+  // عرض شاشة نهاية اللعبة
+  if (gameState === 'gameOver') {
+    fill(255, 0, 0);
+    textSize(64);
+    textAlign(CENTER);
+    text('لقد خسرت!', width / 2, height / 2);
+    textSize(32);
+    text('اضغط R لإعادة اللعب', width / 2, height / 2 + 50);
+    if (gameMusic) gameMusic.stop();
+    noLoop();
+  } else if (gameState === 'win') {
+    fill(0, 255, 0);
+    textSize(64);
+    textAlign(CENTER);
+    text('مبروك، لقد فزت!', width / 2, height / 2);
+    textSize(32);
+    text('النقاط: ' + score, width / 2, height / 2 + 50);
+    text('اضغط R لإعادة اللعب', width / 2, height / 2 + 100);
+    if (gameMusic) gameMusic.stop();
+    noLoop();
+  }
+}
+
+function mousePressed() {
+  player.isMoving = true;
+}
+
+function mouseReleased() {
+  player.isMoving = false;
+}
+
+function keyPressed() {
+  if (key === 'r' || key === 'R') {
+    if (gameState === 'gameOver' || gameState === 'win') {
+      resetGame();
+    }
+  }
+}
+
+function resetGame() {
+  player = new Player(width / 2, height - 50);
+  bots = [];
+  for (let i = 0; i < 5; i++) {
+    bots.push(new Bot(random(width), height - 50));
+  }
+  gameState = 'playing';
+  lightState = 'green';
+  lightTimer = 0;
+  score = 0;
+  if (gameMusic) gameMusic.loop();
+  loop();
+}
+
+class Player {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.isMoving = false;
+  }
+
+  update() {
+    if (this.isMoving && lightState === 'green') {
+      this.y -= 2;
+    }
+    this.y = constrain(this.y, finishLine, height - 50);
+  }
+
+  show() {
+    fill(0, 0, 255);
+    rect(this.x - 15, this.y - 20, 30, 40); // جسم اللاعب
+    fill(255);
+    ellipse(this.x, this.y - 10, 20, 20); // رأس اللاعب
+  }
+}
+
+class Bot {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.isMoving = false;
+  }
+
+  update() {
+    if (lightState === 'green' && random() < 0.05) {
+      this.isMoving = true;
+    } else if (lightState === 'red' && random() < 0.05) {
+      this.isMoving = false;
+    }
+    if (this.isMoving) {
+      this.y -= random(1, 3);
+    }
+    this.y = constrain(this.y, finishLine, height - 50);
+  }
+
+  show() {
+    fill(255, 255, 0);
+    rect(this.x - 10, this.y - 15, 20, 30); // جسم البوت
+    fill(255);
+    ellipse(this.x, this.y - 5, 15, 15); // رأس البوت
+  }
+}
+</script>
 </body>
 </html>
